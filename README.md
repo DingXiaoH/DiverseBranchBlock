@@ -6,6 +6,6 @@ Paper: https://arxiv.org/abs/2103.13425
 
 Will update this whole repo very soon.
 
-Update: released DiverseBranchBlock. Refactoring the code of transformations. Will release in several hours.
+Update: released the code for building the block, transformations and verification.
 
 Sometimes I call it ACNet v2 because 'DBB' is two bits larger than 'ACB' in ASCII. (lol)
