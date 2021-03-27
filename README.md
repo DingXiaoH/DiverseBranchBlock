@@ -2,8 +2,10 @@
 
 This is the PyTorch implementation. The MegEngine version is at https://github.com/megvii-model/DiverseBranchBlock
 
-Just finished my ICCV submission. Will work on the camera ready and code tomorrow!
+Paper: https://arxiv.org/abs/2103.13425
+
+Will update this whole repo very soon.
+
+Update: released DiverseBranchBlock. Refactoring the code of transformations. Will release in several hours.
 
 Sometimes I call it ACNet v2 because 'DBB' is two bits larger than 'ACB' in ASCII. (lol)
-
-Will release it in several days.
