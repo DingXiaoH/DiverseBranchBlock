@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from dbb_transforms import *
 
 def conv_bn(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1,
@@ -47,17 +48,16 @@ class BNAndPadLayer(torch.nn.BatchNorm2d):
     def forward(self, input):
         output = super(BNAndPadLayer, self).forward(input)
         if self.pad_pixels > 0:
-            N, C, H, W = tuple(output.size())
             if self.affine:
                 pad_values = self.bias.detach() - self.running_mean * self.weight.detach() / torch.sqrt(self.running_var + self.eps)
             else:
                 pad_values = - self.running_mean / torch.sqrt(self.running_var + self.eps)
-
-            pad_vec_H = torch.zeros(N, C, self.pad_pixels, W).to(pad_values.device) + pad_values.view(1, -1, 1, 1)
-            pad_vec_W = torch.zeros(N, C, H + 2 * self.pad_pixels, self.pad_pixels).to(pad_values.device) + pad_values.view(1, -1, 1, 1)
-            output = torch.cat([pad_vec_H, output, pad_vec_H], dim=2)
-            output = torch.cat([pad_vec_W, output, pad_vec_W], dim=3)
-
+            output = F.pad(output, [self.pad_pixels] * 4)
+            pad_values = pad_values.view(1, -1, 1, 1)
+            output[:, :, 0:self.pad_pixels, :] = pad_values
+            output[:, :, -self.pad_pixels:, :] = pad_values
+            output[:, :, :, 0:self.pad_pixels] = pad_values
+            output[:, :, :, -self.pad_pixels:] = pad_values
         return output
 
 
