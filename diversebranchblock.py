@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import numpy as np
+from dbb_transforms import *
 
 def conv_bn(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1,
                    padding_mode='zeros'):
@@ -13,7 +12,6 @@ def conv_bn(in_channels, out_channels, kernel_size, stride=1, padding=0, dilatio
     se.add_module('conv', conv_layer)
     se.add_module('bn', bn_layer)
     return se
-
 
 
 class IdentityBasedConv1x1(nn.Conv2d):
@@ -34,6 +32,8 @@ class IdentityBasedConv1x1(nn.Conv2d):
         result = F.conv2d(input, kernel, None, stride=1, padding=0, dilation=self.dilation, groups=self.groups)
         return result
 
+    def get_actual_kernel(self):
+        return self.weight + self.id_tensor.to(self.weight.device)
 
 
 class BNAndPadLayer(torch.nn.BatchNorm2d):
@@ -49,9 +49,9 @@ class BNAndPadLayer(torch.nn.BatchNorm2d):
         if self.pad_pixels > 0:
             N, C, H, W = tuple(output.size())
             if self.affine:
-                pad_values = (self.bias.detach() - self.running_mean * self.weight.detach() / torch.sqrt(self.running_var + self.eps))
+                pad_values = self.bias.detach() - self.running_mean * self.weight.detach() / torch.sqrt(self.running_var + self.eps)
             else:
-                pad_values = (- self.running_mean / torch.sqrt(self.running_var + self.eps))
+                pad_values = - self.running_mean / torch.sqrt(self.running_var + self.eps)
 
             pad_vec_H = torch.zeros(N, C, self.pad_pixels, W).to(pad_values.device) + pad_values.view(1, -1, 1, 1)
             pad_vec_W = torch.zeros(N, C, H + 2 * self.pad_pixels, self.pad_pixels).to(pad_values.device) + pad_values.view(1, -1, 1, 1)
@@ -75,10 +75,10 @@ class DiverseBranchBlock(nn.Module):
         else:
             self.nonlinear = nonlinear
 
-
+        self.kernel_size = kernel_size
+        self.out_channels = out_channels
+        self.groups = groups
         assert padding == kernel_size // 2
-
-        deploy = True
 
         if deploy:
             self.dbb_reparam = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride,
@@ -115,7 +115,41 @@ class DiverseBranchBlock(nn.Module):
                                                             kernel_size=kernel_size, stride=stride, padding=0, groups=groups, bias=False))
             self.dbb_1x1_kxk.add_module('bn2', nn.BatchNorm2d(out_channels))
 
+    def get_equivalent_kernel_bias(self):
+        k_origin, b_origin = transI_fusebn(self.dbb_origin.conv.weight, self.dbb_origin.bn)
+        k_1x1, b_1x1 = transI_fusebn(self.dbb_1x1.conv.weight, self.dbb_1x1.bn)
+        k_1x1 = transVI_multiscale(k_1x1, self.kernel_size)
 
+        if hasattr(self.dbb_1x1_kxk, 'idconv1'):
+            k_1x1_kxk_first = self.dbb_1x1_kxk.idconv1.get_actual_kernel()
+        else:
+            k_1x1_kxk_first = self.dbb_1x1_kxk.conv1.weight
+        k_1x1_kxk_first, b_1x1_kxk_first = transI_fusebn(k_1x1_kxk_first, self.dbb_1x1_kxk.bn1)
+        k_1x1_kxk_second, b_1x1_kxk_second = transI_fusebn(self.dbb_1x1_kxk.conv2.weight, self.dbb_1x1_kxk.bn2)
+        k_1x1_avg_first, b_1x1_avg_first = transI_fusebn(self.dbb_avg.conv.weight, self.dbb_avg.bn)
+        k_avg = transV_avg(self.out_channels, self.kernel_size, self.groups)
+        k_1x1_avg_second, b_1x1_avg_second = transI_fusebn(k_avg, self.dbb_avg.avgbn)
+
+        k_1x1_kxk_merged, b_1x1_kxk_merged = transIII_1x1_kxk(k_1x1_kxk_first, b_1x1_kxk_first, k_1x1_kxk_second, b_1x1_kxk_second, groups=self.groups)
+        k_1x1_avg_merged, b_1x1_avg_merged = transIII_1x1_kxk(k_1x1_avg_first, b_1x1_avg_first, k_1x1_avg_second, b_1x1_avg_second, groups=self.groups)
+
+        return transII_addbranch((k_origin, k_1x1, k_1x1_kxk_merged, k_1x1_avg_merged), (b_origin, b_1x1, b_1x1_kxk_merged, b_1x1_avg_merged))
+
+    def switch_to_deploy(self):
+        if hasattr(self, 'dbb_reparam'):
+            return
+        kernel, bias = self.get_equivalent_kernel_bias()
+        self.dbb_reparam = nn.Conv2d(in_channels=self.dbb_origin.conv.in_channels, out_channels=self.dbb_origin.conv.out_channels,
+                                     kernel_size=self.dbb_origin.conv.kernel_size, stride=self.dbb_origin.conv.stride,
+                                     padding=self.dbb_origin.conv.padding, dilation=self.dbb_origin.conv.dilation, groups=self.dbb_origin.conv.groups, bias=True)
+        self.dbb_reparam.weight.data = kernel
+        self.dbb_reparam.bias.data = bias
+        for para in self.parameters():
+            para.detach_()
+        self.__delattr__('dbb_origin')
+        self.__delattr__('dbb_avg')
+        self.__delattr__('dbb_1x1')
+        self.__delattr__('dbb_1x1_kxk')
 
     def forward(self, inputs):
 
