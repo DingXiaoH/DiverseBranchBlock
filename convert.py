@@ -2,7 +2,6 @@ import argparse
 import os
 import torch
 from convnet_utils import switch_conv_bn_impl, switch_deploy_flag, build_model
-from diversebranchblock import DiverseBranchBlock
 
 parser = argparse.ArgumentParser(description='DBB Conversion')
 parser.add_argument('load', metavar='LOAD', help='path to the weights file')
@@ -16,7 +15,10 @@ def convert():
     switch_deploy_flag(False)
     train_model = build_model(args.arch)
 
-    if os.path.isfile(args.load):
+    if 'hdf5' in args.load:
+        from utils import model_load_hdf5
+        model_load_hdf5(train_model, args.load)
+    elif os.path.isfile(args.load):
         print("=> loading checkpoint '{}'".format(args.load))
         checkpoint = torch.load(args.load)
         if 'state_dict' in checkpoint:
@@ -27,7 +29,7 @@ def convert():
         print("=> no checkpoint found at '{}'".format(args.load))
 
     for m in train_model.modules():
-        if isinstance(m, DiverseBranchBlock):
+        if hasattr(m, 'switch_to_deploy'):
             m.switch_to_deploy()
 
     torch.save(train_model.state_dict(), args.save)

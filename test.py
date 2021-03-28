@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser(description='PyTorch ImageNet Test')
 parser.add_argument('data', metavar='DIR', help='path to dataset')
 parser.add_argument('mode', metavar='MODE', default='train', choices=['train', 'deploy'], help='train or deploy')
 parser.add_argument('weights', metavar='WEIGHTS', help='path to the weights file')
-parser.add_argument('-a', '--arch', metavar='ARCH', default='RepVGG-A0')
+parser.add_argument('-a', '--arch', metavar='ARCH', default='ResNet-18')
 parser.add_argument('-t', '--blocktype', metavar='BLK', default='DBB', choices=['DBB', 'ACB', 'base'])
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
@@ -36,7 +36,10 @@ def test():
     # define loss function (criterion) and optimizer
     criterion = torch.nn.CrossEntropyLoss().cuda()
 
-    if os.path.isfile(args.weights):
+    if 'hdf5' in args.weights:
+        from utils import model_load_hdf5
+        model_load_hdf5(model, args.weights)
+    elif os.path.isfile(args.weights):
         print("=> loading checkpoint '{}'".format(args.weights))
         checkpoint = torch.load(args.weights)
         if 'state_dict' in checkpoint:

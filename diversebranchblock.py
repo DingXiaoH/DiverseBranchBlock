@@ -154,7 +154,7 @@ class DiverseBranchBlock(nn.Module):
     def forward(self, inputs):
 
         if hasattr(self, 'dbb_reparam'):
-            return self.dbb_reparam(inputs)
+            return self.nonlinear(self.dbb_reparam(inputs))
 
         out = self.dbb_origin(inputs)
         if hasattr(self, 'dbb_1x1'):
