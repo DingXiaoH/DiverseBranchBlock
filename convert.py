@@ -1,24 +1,20 @@
 import argparse
 import os
 import torch
-import torch.nn.parallel
-import torch.optim
-import torch.utils.data
-import torch.utils.data.distributed
+from convnet_utils import switch_conv_bn_impl, switch_deploy_flag, build_model
+from diversebranchblock import DiverseBranchBlock
 
-from repvgg import get_RepVGG_func_by_name, repvgg_model_convert
-
-parser = argparse.ArgumentParser(description='RepVGG Conversion')
+parser = argparse.ArgumentParser(description='DBB Conversion')
 parser.add_argument('load', metavar='LOAD', help='path to the weights file')
 parser.add_argument('save', metavar='SAVE', help='path to the weights file')
-parser.add_argument('-a', '--arch', metavar='ARCH', default='RepVGG-A0')
+parser.add_argument('-a', '--arch', metavar='ARCH', default='ResNet-18')
 
 def convert():
     args = parser.parse_args()
 
-    repvgg_build_func = get_RepVGG_func_by_name(args.arch)
-
-    train_model = repvgg_build_func(deploy=False)
+    switch_conv_bn_impl('DBB')
+    switch_deploy_flag(False)
+    train_model = build_model(args.arch)
 
     if os.path.isfile(args.load):
         print("=> loading checkpoint '{}'".format(args.load))
@@ -30,7 +26,11 @@ def convert():
     else:
         print("=> no checkpoint found at '{}'".format(args.load))
 
-    repvgg_model_convert(train_model, build_func=repvgg_build_func, save_path=args.save)
+    for m in train_model.modules():
+        if isinstance(m, DiverseBranchBlock):
+            m.switch_to_deploy()
+
+    torch.save(train_model.state_dict(), args.save)
 
 
 if __name__ == '__main__':

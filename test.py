@@ -2,23 +2,17 @@ import argparse
 import os
 import time
 import torch
-import torch.nn as nn
-import torch.nn.parallel
 import torch.backends.cudnn as cudnn
-import torch.optim
-import torch.utils.data
-import torch.utils.data.distributed
-import torchvision.transforms as transforms
 import torchvision.datasets as datasets
-from utils import accuracy, ProgressMeter, AverageMeter
-
-from repvgg import get_RepVGG_func_by_name
+from utils import accuracy, ProgressMeter, AverageMeter, val_preprocess
+from convnet_utils import switch_deploy_flag, switch_conv_bn_impl, build_model
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Test')
 parser.add_argument('data', metavar='DIR', help='path to dataset')
 parser.add_argument('mode', metavar='MODE', default='train', choices=['train', 'deploy'], help='train or deploy')
 parser.add_argument('weights', metavar='WEIGHTS', help='path to the weights file')
 parser.add_argument('-a', '--arch', metavar='ARCH', default='RepVGG-A0')
+parser.add_argument('-t', '--blocktype', metavar='BLK', default='DBB', choices=['DBB', 'ACB', 'base'])
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('-b', '--batch-size', default=100, type=int,
@@ -28,9 +22,9 @@ parser.add_argument('-b', '--batch-size', default=100, type=int,
 def test():
     args = parser.parse_args()
 
-    repvgg_build_func = get_RepVGG_func_by_name(args.arch)
-
-    model = repvgg_build_func(deploy=args.mode=='deploy')
+    switch_deploy_flag(args.mode == 'deploy')
+    switch_conv_bn_impl(args.blocktype)
+    model = build_model(args.arch)
 
     if not torch.cuda.is_available():
         print('using CPU, this will be slow')
@@ -40,7 +34,7 @@ def test():
         use_gpu = True
 
     # define loss function (criterion) and optimizer
-    criterion = nn.CrossEntropyLoss().cuda()
+    criterion = torch.nn.CrossEntropyLoss().cuda()
 
     if os.path.isfile(args.weights):
         print("=> loading checkpoint '{}'".format(args.weights))
@@ -57,16 +51,9 @@ def test():
 
     # Data loading code
     valdir = os.path.join(args.data, 'val')
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
 
     val_loader = torch.utils.data.DataLoader(
-        datasets.ImageFolder(valdir, transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            normalize,
-        ])),
+        datasets.ImageFolder(valdir, val_preprocess(224)),
         batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
 

@@ -141,17 +141,10 @@ def main_worker(gpu, ngpus_per_node, args):
                                 world_size=args.world_size, rank=args.rank)
 
     #   =========================== build model
-    from convnet_utils import switch_deploy_flag, switch_conv_bn_impl
+    from convnet_utils import switch_deploy_flag, switch_conv_bn_impl, build_model
     switch_deploy_flag(False)
     switch_conv_bn_impl(args.blocktype)
-    if args.arch == 'ResNet-18':
-        from resnet import create_Res18
-        model = create_Res18()
-    elif args.arch == 'ResNet-50':
-        from resnet import create_Res50
-        model = create_Res50()
-    else:
-        raise ValueError('TODO')
+    model = build_model(args.arch)
 
     if gpu == 0:
         for name, param in model.named_parameters():
@@ -318,9 +311,9 @@ def train(train_loader, model, criterion, optimizer, epoch, args, lr_scheduler):
 
         lr_scheduler.step()
 
-        if i % args.print_freq == 0:
+        if i % args.print_freq == 0 and args.gpu == 0:
             progress.display(i)
-        if i % 1000 == 0:
+        if i % 1000 == 0 and args.gpu == 0:
             print('cur lr: ', lr_scheduler.get_lr()[0])
 
 

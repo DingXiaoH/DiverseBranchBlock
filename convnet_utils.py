@@ -46,3 +46,15 @@ def switch_conv_bn_impl(block_type):
 def switch_deploy_flag(deploy):
     global DEPLOY_FLAG
     DEPLOY_FLAG = deploy
+
+
+def build_model(arch):
+    if arch == 'ResNet-18':
+        from resnet import create_Res18
+        model = create_Res18()
+    elif arch == 'ResNet-50':
+        from resnet import create_Res50
+        model = create_Res50()
+    else:
+        raise ValueError('TODO')
+    return model
