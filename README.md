@@ -24,10 +24,40 @@ We propose a universal building block of Convolutional Neural Network (ConvNet) 
 ![image](https://github.com/DingXiaoH/DiverseBranchBlock/blob/main/table2.PNG)
 
 
+# Use our pretrained models
+
+You may download the models reported in the paper from Google Drive (https://drive.google.com/drive/folders/1BPuqY_ktKz8LvHjFK5abD0qy3ESp8v6H?usp=sharing) or Baidu Cloud (https://pan.baidu.com/s/1wPaQnLKyNjF_bEMNRo4z6Q, the access code is "dbbk"). Currently only ResNet-18 models are available. The others will be released very soon. For the ease of transfer learning on other tasks, we provide both training-time and inference-time models. For ResNet-18 as an example, assume IMGNET_PATH is the path to your directory that contains the "train" and "val" directories of ImageNet, you may test the accuracy by running
+```
+python test.py IMGNET_PATH train ResNet-18_DBB_7101.pth -a ResNet-18 -t DBB
+```
+Here "train" indicates the training-time structure
+
+
+# Convert the training-time models into inference-time
+
+You may convert a trained model into the inference-time structure with
+```
+python convert.py [weights file of the training-time model to load] [path to save] -a [architecture name]
+```
+For example,
+```
+python convert.py ResNet-18_DBB_7101.pth ResNet-18_DBB_7101_deploy.pth -a ResNet-18
+```
+Then you may test the inference-time model by
+```
+python test.py IMGNET_PATH deploy ResNet-18_DBB_7101_deploy.pth -a ResNet-18 -t DBB
+```
+Note that the argument "deploy" builds an inference-time model.
+
+
 # ImageNet training
 
-The models and training script will be released very soon.
-            
+The multi-processing training script in this repo is based on the [official PyTorch example](https://github.com/pytorch/examples/blob/master/imagenet/main.py) for the simplicity and better readability. The modifications include the model-building part and cosine learning rate scheduler. 
+You may train and test like this:
+```
+python train.py -a ResNet-18 -t DBB --dist-url tcp://127.0.0.1:23333 --dist-backend nccl --multiprocessing-distributed --world-size 1 --rank 0 --workers 64 IMGNET_PATH
+python test.py IMGNET_PATH train model_best.pth.tar -a ResNet-18
+```         
 
 # Use like this in your own code
 
@@ -62,8 +92,8 @@ Train the model just like you train the other regular models. Then call **switch
 ```
 model = SomeModel(...)
 train(model)
-for m in model.modules():
-    if isinstance(m, DiverseBranchBlock):
+for m in train_model.modules():
+    if hasattr(m, 'switch_to_deploy'):
         m.switch_to_deploy()
 test(model)
 save(model)
@@ -78,7 +108,7 @@ save(model)
 python dbb_verify.py
 ```
 
-**Q**: What is the relationship between DBB and RepVGG.
+**Q**: What is the relationship between DBB and RepVGG?
 
 **A**: RepVGG is a plain architecture, and the RepVGG-style structural re-param is designed for the plain architecture. On a non-plain architecture, a RepVGG block shows no superiority compared to a single 3x3 conv (it improves Res-50 by only 0.03%, as reported in the RepVGG paper). DBB is a universal building block that can be used on numerous architectures.
 
