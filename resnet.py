@@ -64,8 +64,7 @@ class ResNet(nn.Module):
         blocks = []
         for stride in strides:
             if block is Bottleneck:
-                blocks.append(block(in_planes=self.in_planes, planes=int(planes), stride=stride,
-                                stride2_at_first=self.stride2_at_first))
+                blocks.append(block(in_planes=self.in_planes, planes=int(planes), stride=stride))
             else:
                 blocks.append(block(in_planes=self.in_planes, planes=int(planes), stride=stride))
             self.in_planes = int(planes * block.expansion)

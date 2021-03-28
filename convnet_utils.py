@@ -43,30 +43,26 @@ class ConvBN(nn.Module):
         self.conv = conv
 
 
-
-
 def conv_bn(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1):
     if CONV_BN_IMPL == 'base' or kernel_size == 1 or kernel_size >= 7:
-        return ConvBN(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride,
-                       padding=padding, dilation=dilation, groups=groups, deploy=DEPLOY_FLAG)
+        blk_type = ConvBN
     elif CONV_BN_IMPL == 'ACB':
-        return ACBlock(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride,
-                       padding=padding, dilation=dilation, groups=groups, deploy=DEPLOY_FLAG)
+        blk_type = ACBlock
     else:
-        return DiverseBranchBlock(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride,
+        blk_type = DiverseBranchBlock
+    return blk_type(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride,
                                   padding=padding, dilation=dilation, groups=groups, deploy=DEPLOY_FLAG)
-
 
 def conv_bn_relu(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1):
     if CONV_BN_IMPL == 'base' or kernel_size == 1 or kernel_size >= 7:
-        return ConvBN(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride,
-                       padding=padding, dilation=dilation, groups=groups, deploy=DEPLOY_FLAG, nonlinear=nn.ReLU())
+        blk_type = ConvBN
     elif CONV_BN_IMPL == 'ACB':
-        return ACBlock(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride,
-                       padding=padding, dilation=dilation, groups=groups, deploy=DEPLOY_FLAG, nonlinear=nn.ReLU())
+        blk_type = ACBlock
     else:
-        return DiverseBranchBlock(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size,
-                                  stride=stride, padding=padding, dilation=dilation, groups=groups, deploy=DEPLOY_FLAG, nonlinear=nn.ReLU())
+        blk_type = DiverseBranchBlock
+    return blk_type(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride,
+                    padding=padding, dilation=dilation, groups=groups, deploy=DEPLOY_FLAG, nonlinear=nn.ReLU())
+
 
 def switch_conv_bn_impl(block_type):
     assert block_type in ['base', 'DBB', 'ACB']
