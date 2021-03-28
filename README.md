@@ -8,6 +8,8 @@ Paper: https://arxiv.org/abs/2103.13425
 
 Update: released the code for building the block, transformations and verification.
 
+Update: a more efficient implementation of BNAndPadLayer
+
 Sometimes I call it ACNet v2 because 'DBB' is two bits larger than 'ACB' in ASCII. (lol)
 
 We provide the trained models and a super simple PyTorch-official-example-style training script to reproduce the results.
