@@ -117,8 +117,12 @@ class DiverseBranchBlock(nn.Module):
 
     def get_equivalent_kernel_bias(self):
         k_origin, b_origin = transI_fusebn(self.dbb_origin.conv.weight, self.dbb_origin.bn)
-        k_1x1, b_1x1 = transI_fusebn(self.dbb_1x1.conv.weight, self.dbb_1x1.bn)
-        k_1x1 = transVI_multiscale(k_1x1, self.kernel_size)
+
+        if hasattr(self, 'dbb_1x1'):
+            k_1x1, b_1x1 = transI_fusebn(self.dbb_1x1.conv.weight, self.dbb_1x1.bn)
+            k_1x1 = transVI_multiscale(k_1x1, self.kernel_size)
+        else:
+            k_1x1, b_1x1 = 0, 0
 
         if hasattr(self.dbb_1x1_kxk, 'idconv1'):
             k_1x1_kxk_first = self.dbb_1x1_kxk.idconv1.get_actual_kernel()
@@ -126,12 +130,15 @@ class DiverseBranchBlock(nn.Module):
             k_1x1_kxk_first = self.dbb_1x1_kxk.conv1.weight
         k_1x1_kxk_first, b_1x1_kxk_first = transI_fusebn(k_1x1_kxk_first, self.dbb_1x1_kxk.bn1)
         k_1x1_kxk_second, b_1x1_kxk_second = transI_fusebn(self.dbb_1x1_kxk.conv2.weight, self.dbb_1x1_kxk.bn2)
-        k_1x1_avg_first, b_1x1_avg_first = transI_fusebn(self.dbb_avg.conv.weight, self.dbb_avg.bn)
-        k_avg = transV_avg(self.out_channels, self.kernel_size, self.groups)
-        k_1x1_avg_second, b_1x1_avg_second = transI_fusebn(k_avg, self.dbb_avg.avgbn)
-
         k_1x1_kxk_merged, b_1x1_kxk_merged = transIII_1x1_kxk(k_1x1_kxk_first, b_1x1_kxk_first, k_1x1_kxk_second, b_1x1_kxk_second, groups=self.groups)
-        k_1x1_avg_merged, b_1x1_avg_merged = transIII_1x1_kxk(k_1x1_avg_first, b_1x1_avg_first, k_1x1_avg_second, b_1x1_avg_second, groups=self.groups)
+
+        k_avg = transV_avg(self.out_channels, self.kernel_size, self.groups)
+        k_1x1_avg_second, b_1x1_avg_second = transI_fusebn(k_avg.to(self.dbb_avg.avgbn.weight.device), self.dbb_avg.avgbn)
+        if hasattr(self.dbb_avg, 'conv'):
+            k_1x1_avg_first, b_1x1_avg_first = transI_fusebn(self.dbb_avg.conv.weight, self.dbb_avg.bn)
+            k_1x1_avg_merged, b_1x1_avg_merged = transIII_1x1_kxk(k_1x1_avg_first, b_1x1_avg_first, k_1x1_avg_second, b_1x1_avg_second, groups=self.groups)
+        else:
+            k_1x1_avg_merged, b_1x1_avg_merged = k_1x1_avg_second, b_1x1_avg_second
 
         return transII_addbranch((k_origin, k_1x1, k_1x1_kxk_merged, k_1x1_avg_merged), (b_origin, b_1x1, b_1x1_kxk_merged, b_1x1_avg_merged))
 

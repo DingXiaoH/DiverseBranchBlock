@@ -2,6 +2,8 @@ import argparse
 import os
 import torch
 from convnet_utils import switch_conv_bn_impl, switch_deploy_flag, build_model
+import numpy as np
+import copy
 
 parser = argparse.ArgumentParser(description='DBB Conversion')
 parser.add_argument('load', metavar='LOAD', help='path to the weights file')
@@ -23,6 +25,7 @@ def convert():
         checkpoint = torch.load(args.load)
         if 'state_dict' in checkpoint:
             checkpoint = checkpoint['state_dict']
+        checkpoint = copy.deepcopy(checkpoint)
         ckpt = {k.replace('module.', ''): v for k, v in checkpoint.items()}  # strip the names
         train_model.load_state_dict(ckpt)
     else:
