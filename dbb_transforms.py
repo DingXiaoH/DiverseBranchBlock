@@ -12,7 +12,7 @@ def transII_addbranch(kernels, biases):
 
 def transIII_1x1_kxk(k1, b1, k2, b2, groups):
     if groups == 1:
-        k = F.conv2d(k2, k1.permute(1, 0, 2, 3))      #
+        k = F.conv2d(k2, k1.permute(1, 0, 2, 3))      
         b_hat = (k2 * b1.reshape(1, -1, 1, 1)).sum((1, 2, 3))
     else:
         k_slices = []
