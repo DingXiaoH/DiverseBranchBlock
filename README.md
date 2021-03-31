@@ -10,10 +10,9 @@ Update: released the code for building the block, transformations and verificati
 
 Update: a more efficient implementation of BNAndPadLayer
 
+Update: MobileNet, ResNet-18 and ResNet-50 models released. You can download them from Google Drive or Baidu Cloud. For the 1x1-KxK branch of MobileNet, we used internal_channels = 2x input_channels for every depthwise conv. 1x also worked but the accuracy were slightly lower (72.71% v.s. 72.88%). On dense conv like ResNet, more internal channels seem useless.
+
 Sometimes I call it ACNet v2 because 'DBB' is two bits larger than 'ACB' in ASCII. (lol)
-
-We provide the trained models and a super simple PyTorch-official-example-style training script to reproduce the results.
-
 
 # Abstract
 
@@ -57,7 +56,8 @@ You may train and test like this:
 ```
 python train.py -a ResNet-18 -t DBB --dist-url tcp://127.0.0.1:23333 --dist-backend nccl --multiprocessing-distributed --world-size 1 --rank 0 --workers 64 IMGNET_PATH
 python test.py IMGNET_PATH train model_best.pth.tar -a ResNet-18
-```         
+```
+
 
 # Use like this in your own code
 
