@@ -10,7 +10,7 @@ Update: released the code for building the block, transformations and verificati
 
 Update: a more efficient implementation of BNAndPadLayer
 
-Update: MobileNet, ResNet-18 and ResNet-50 models released. You can download them from Google Drive or Baidu Cloud. For the 1x1-KxK branch of MobileNet, we used internal_channels = 2x input_channels for every depthwise conv. 1x also worked but the accuracy was slightly lower (72.71% v.s. 72.88%). On dense conv like ResNet, more internal channels seem useless.
+Update: MobileNet, ResNet-18 and ResNet-50 models released. You can download them from Google Drive or Baidu Cloud. For the 1x1-KxK branch of MobileNet, we used internal_channels = 2x input_channels for every depthwise conv. 1x also worked but the accuracy was slightly lower (72.71% v.s. 72.88%). On dense conv like ResNet, we used internal_channels = input_channels, and larger internal_channels seemed useless.
 
 Sometimes I call it ACNet v2 because 'DBB' is two bits larger than 'ACB' in ASCII. (lol)
 
