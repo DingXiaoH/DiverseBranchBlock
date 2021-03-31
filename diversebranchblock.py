@@ -94,15 +94,17 @@ class DiverseBranchBlock(nn.Module):
                                         nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=1,
                                                   stride=1, padding=0, groups=groups, bias=False))
                 self.dbb_avg.add_module('bn', BNAndPadLayer(pad_pixels=padding, num_features=out_channels))
+                self.dbb_avg.add_module('avg', nn.AvgPool2d(kernel_size=kernel_size, stride=stride, padding=0))
                 self.dbb_1x1 = conv_bn(in_channels=in_channels, out_channels=out_channels, kernel_size=1, stride=stride,
                                        padding=0, groups=groups)
+            else:
+                self.dbb_avg.add_module('avg', nn.AvgPool2d(kernel_size=kernel_size, stride=stride, padding=padding))
 
-            self.dbb_avg.add_module('avg', nn.AvgPool2d(kernel_size=kernel_size, stride=stride, padding=0))
             self.dbb_avg.add_module('avgbn', nn.BatchNorm2d(out_channels))
 
 
             if internal_channels_1x1_3x3 is None:
-                internal_channels_1x1_3x3 = in_channels
+                internal_channels_1x1_3x3 = in_channels if groups < out_channels else 2 * in_channels   # For mobilenet, it is better to have 2X internal channels
 
             self.dbb_1x1_kxk = nn.Sequential()
             if internal_channels_1x1_3x3 == in_channels:
@@ -155,7 +157,8 @@ class DiverseBranchBlock(nn.Module):
             para.detach_()
         self.__delattr__('dbb_origin')
         self.__delattr__('dbb_avg')
-        self.__delattr__('dbb_1x1')
+        if hasattr(self, 'dbb_1x1'):
+            self.__delattr__('dbb_1x1')
         self.__delattr__('dbb_1x1_kxk')
 
     def forward(self, inputs):

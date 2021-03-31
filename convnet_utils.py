@@ -82,6 +82,9 @@ def build_model(arch):
     elif arch == 'ResNet-50':
         from resnet import create_Res50
         model = create_Res50()
+    elif arch == 'MobileNet':
+        from mobilenet import create_MobileNet
+        model = create_MobileNet()
     else:
         raise ValueError('TODO')
     return model
