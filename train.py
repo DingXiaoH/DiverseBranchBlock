@@ -82,9 +82,13 @@ def sgd_optimizer(model, lr, momentum, weight_decay):
         if not value.requires_grad:
             continue
         apply_lr = lr
+        apply_wd = weight_decay
         if 'bias' in key:
             apply_lr = 2 * lr       #   Just a Caffe-style common practice. Made no difference.
-        params += [{'params': [value], 'lr': apply_lr, 'weight_decay': weight_decay}]
+        if 'depth' in key:
+            apply_wd = 0
+        print('set weight decay ', key, apply_wd)
+        params += [{'params': [value], 'lr': apply_lr, 'weight_decay': apply_wd}]
     optimizer = torch.optim.SGD(params, lr, momentum=momentum)
     return optimizer
 
@@ -219,13 +223,13 @@ def main_worker(gpu, ngpus_per_node, args):
     train_dataset = datasets.ImageFolder(traindir, trans)
 
     if args.distributed:
-        train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+        train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset, shuffle=True)
     else:
         train_sampler = None
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
-        num_workers=args.workers, pin_memory=True, sampler=train_sampler)
+        num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True)
 
 
     val_dataset = datasets.ImageFolder(valdir, val_preprocess(224))
@@ -242,6 +246,7 @@ def main_worker(gpu, ngpus_per_node, args):
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
+            print('set sampler')
         # adjust_learning_rate(optimizer, epoch, args)
 
         # train for one epoch
