@@ -37,21 +37,26 @@ class IdentityBasedConv1x1(nn.Conv2d):
         return self.weight + self.id_tensor.to(self.weight.device)
 
 
-class BNAndPadLayer(torch.nn.BatchNorm2d):
-
-    def __init__(self, pad_pixels, num_features, eps=1e-5, momentum=0.1, affine=True,
+class BNAndPadLayer(nn.Module):
+    def __init__(self,
+                 pad_pixels,
+                 num_features,
+                 eps=1e-5,
+                 momentum=0.1,
+                 affine=True,
                  track_running_stats=True):
-        super(BNAndPadLayer, self).__init__(num_features=num_features, eps=eps, momentum=momentum,
-                                      affine=affine, track_running_stats=track_running_stats)
+        super(BNAndPadLayer, self).__init__()
+        self.bn = nn.BatchNorm2d(num_features, eps, momentum, affine, track_running_stats)
         self.pad_pixels = pad_pixels
 
     def forward(self, input):
-        output = super(BNAndPadLayer, self).forward(input)
+        # pad BN will be more Efficient in GPU
+        output = self.bn(input)
         if self.pad_pixels > 0:
-            if self.affine:
-                pad_values = self.bias.detach() - self.running_mean * self.weight.detach() / torch.sqrt(self.running_var + self.eps)
+            if self.bn.affine:
+                pad_values = self.bn.bias.detach() - self.bn.running_mean * self.bn.weight.detach() / torch.sqrt(self.bn.running_var + self.bn.eps)
             else:
-                pad_values = - self.running_mean / torch.sqrt(self.running_var + self.eps)
+                pad_values = - self.bn.running_mean / torch.sqrt(self.bn.running_var + self.bn.eps)
             output = F.pad(output, [self.pad_pixels] * 4)
             pad_values = pad_values.view(1, -1, 1, 1)
             output[:, :, 0:self.pad_pixels, :] = pad_values
@@ -59,6 +64,26 @@ class BNAndPadLayer(torch.nn.BatchNorm2d):
             output[:, :, :, 0:self.pad_pixels] = pad_values
             output[:, :, :, -self.pad_pixels:] = pad_values
         return output
+
+    @property
+    def weight(self):
+        return self.bn.weight
+
+    @property
+    def bias(self):
+        return self.bn.bias
+
+    @property
+    def running_mean(self):
+        return self.bn.running_mean
+
+    @property
+    def running_var(self):
+        return self.bn.running_var
+
+    @property
+    def eps(self):
+        return self.bn.eps
 
 
 class DiverseBranchBlock(nn.Module):
@@ -117,6 +142,9 @@ class DiverseBranchBlock(nn.Module):
                                                             kernel_size=kernel_size, stride=stride, padding=0, groups=groups, bias=False))
             self.dbb_1x1_kxk.add_module('bn2', nn.BatchNorm2d(out_channels))
 
+        # add this initialization to train this model gradually
+        self.single_init()
+
     def get_equivalent_kernel_bias(self):
         k_origin, b_origin = transI_fusebn(self.dbb_origin.conv.weight, self.dbb_origin.bn)
 
@@ -172,3 +200,30 @@ class DiverseBranchBlock(nn.Module):
         out += self.dbb_avg(inputs)
         out += self.dbb_1x1_kxk(inputs)
         return self.nonlinear(out)
+
+    def init_gamma(self, gamma_value):
+        if hasattr(self, "dbb_origin"):
+            torch.nn.init.constant_(self.dbb_origin.bn.weight, gamma_value)
+        if hasattr(self, "dbb_1x1"):
+            torch.nn.init.constant_(self.dbb_1x1.bn.weight, gamma_value)
+        if hasattr(self, "dbb_avg"):
+            torch.nn.init.constant_(self.dbb_avg.avgbn.weight, gamma_value)
+        if hasattr(self, "dbb_1x1_kxk"):
+            torch.nn.init.constant_(self.dbb_1x1_kxk.bn2.weight, gamma_value)
+
+    def single_init(self):
+        self.init_gamma(0.0)
+        if hasattr(self, "dbb_origin"):
+            torch.nn.init.constant_(self.dbb_origin.bn.weight, 1.0)
+
+
+if __name__ == "__main__":
+    model = DiverseBranchBlock(128, 128, 3, padding=1)
+    model.eval()
+    data = torch.rand(2, 128, 40, 40)
+    print(model)
+    ori_out = model(data)
+    model.switch_to_deploy()
+    print(model)
+    new_out = model(data)
+    print(torch.mean(torch.abs(ori_out-new_out)))
