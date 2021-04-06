@@ -91,7 +91,7 @@ class DiverseBranchBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size,
                  stride=1, padding=0, dilation=1, groups=1,
                  internal_channels_1x1_3x3=None,
-                 deploy=False, nonlinear=None):
+                 deploy=False, nonlinear=None, single_init=False):
         super(DiverseBranchBlock, self).__init__()
         self.deploy = deploy
 
@@ -142,8 +142,10 @@ class DiverseBranchBlock(nn.Module):
                                                             kernel_size=kernel_size, stride=stride, padding=0, groups=groups, bias=False))
             self.dbb_1x1_kxk.add_module('bn2', nn.BatchNorm2d(out_channels))
 
-        # add this initialization to train this model gradually
-        self.single_init()
+        #   The experiments reported in the paper used the default initialization of bn.weight (all as 1). But changing the initialization may be useful in some cases.
+        if single_init:
+            #   Initialize the bn.weight of dbb_origin as 1 and others as 0. This is not the default setting.
+            self.single_init()
 
     def get_equivalent_kernel_bias(self):
         k_origin, b_origin = transI_fusebn(self.dbb_origin.conv.weight, self.dbb_origin.bn)
@@ -215,15 +217,3 @@ class DiverseBranchBlock(nn.Module):
         self.init_gamma(0.0)
         if hasattr(self, "dbb_origin"):
             torch.nn.init.constant_(self.dbb_origin.bn.weight, 1.0)
-
-
-if __name__ == "__main__":
-    model = DiverseBranchBlock(128, 128, 3, padding=1)
-    model.eval()
-    data = torch.rand(2, 128, 40, 40)
-    print(model)
-    ori_out = model(data)
-    model.switch_to_deploy()
-    print(model)
-    new_out = model(data)
-    print(torch.mean(torch.abs(ori_out-new_out)))
