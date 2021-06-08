@@ -50,7 +50,6 @@ class BNAndPadLayer(nn.Module):
         self.pad_pixels = pad_pixels
 
     def forward(self, input):
-        # pad BN will be more Efficient in GPU
         output = self.bn(input)
         if self.pad_pixels > 0:
             if self.bn.affine:
