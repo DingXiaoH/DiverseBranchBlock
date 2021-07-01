@@ -14,6 +14,14 @@ Update: MobileNet, ResNet-18 and ResNet-50 models released. You can download the
 
 Sometimes I call it ACNet v2 because 'DBB' is two bits larger than 'ACB' in ASCII. (lol)
 
+    @inproceedings{ding2021diverse,
+    title={Diverse Branch Block: Building a Convolution as an Inception-like Unit},
+    author={Ding, Xiaohan and Zhang, Xiangyu and Han, Jungong and Ding, Guiguang},
+    booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+    pages={10886--10895},
+    year={2021}
+    }
+
 # Abstract
 
 We propose a universal building block of Convolutional Neural Network (ConvNet) to improve the performance without any inference-time costs. The block is named Diverse Branch Block (DBB), which enhances the representational capacity of a single convolution by combining diverse branches of different scales and complexities to enrich the feature space, including sequences of convolutions, multi-scale convolutions, and average pooling. After training, a DBB can be equivalently converted into a single conv layer for deployment. Unlike the advancements of novel ConvNet architectures, DBB complicates the training-time microstructure while maintaining the macro architecture, so that it can be used as a drop-in replacement for regular conv layers of any architecture. In this way, the model can be trained to reach a higher level of performance and then transformed into the original inference-time structure for inference. DBB improves ConvNets on image classification (up to 1.9% higher top-1 accuracy on ImageNet), object detection and semantic segmentation. 
