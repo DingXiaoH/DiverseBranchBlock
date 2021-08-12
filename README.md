@@ -33,7 +33,7 @@ We propose a universal building block of Convolutional Neural Network (ConvNet) 
 
 # Use our pretrained models
 
-You may download the models reported in the paper from Google Drive (https://drive.google.com/drive/folders/1BPuqY_ktKz8LvHjFK5abD0qy3ESp8v6H?usp=sharing) or Baidu Cloud (https://pan.baidu.com/s/1wPaQnLKyNjF_bEMNRo4z6Q, the access code is "dbbk"). Currently only ResNet-18 models are available. The others will be released very soon. For the ease of transfer learning on other tasks, we provide both training-time and inference-time models. For ResNet-18 as an example, assume IMGNET_PATH is the path to your directory that contains the "train" and "val" directories of ImageNet, you may test the accuracy by running
+You may download the models reported in the paper (ResNet-18, ResNet-50, MobileNet) from Google Drive (https://drive.google.com/drive/folders/1BPuqY_ktKz8LvHjFK5abD0qy3ESp8v6H?usp=sharing) or Baidu Cloud (https://pan.baidu.com/s/1wPaQnLKyNjF_bEMNRo4z6Q, the access code is "dbbk"). For the ease of transfer learning on other tasks, we provide both training-time and inference-time models. For ResNet-18 as an example, assume IMGNET_PATH is the path to your directory that contains the "train" and "val" directories of ImageNet, you may test the accuracy by running
 ```
 python test.py IMGNET_PATH train ResNet-18_DBB_7101.pth -a ResNet-18 -t DBB
 ```
