@@ -4,6 +4,8 @@ DBB is a powerful ConvNet building block to replace regular conv. It improves th
 
 This is the PyTorch implementation. The MegEngine version is at https://github.com/megvii-model/DiverseBranchBlock
 
+Another nice implementation by [@zjykzj](https://github.com/zjykzj). Please check [here](https://github.com/DingXiaoH/DiverseBranchBlock/issues/20).
+
 Paper: https://arxiv.org/abs/2103.13425
 
 Update: released the code for building the block, transformations and verification.
